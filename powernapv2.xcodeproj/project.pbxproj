@@ -457,6 +457,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = powernapv2;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "為了偵測您的入睡狀態並記錄您的 Power Nap，需要讀取您的心率和靜息心率數據。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "為了將您的 Power Nap 時段記錄到「健康」App 中，方便您統一查看，需要寫入睡眠分析數據。";
+				INFOPLIST_KEY_NSMotionUsageDescription = "為了輔助判斷您是否處於靜止狀態以偵測入睡，需要取用您的運動與健身活動數據。";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKWatchOnly = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -487,6 +490,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = powernapv2;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "為了偵測您的入睡狀態並記錄您的 Power Nap，需要讀取您的心率和靜息心率數據。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "為了將您的 Power Nap 時段記錄到「健康」App 中，方便您統一查看，需要寫入睡眠分析數據。";
+				INFOPLIST_KEY_NSMotionUsageDescription = "為了輔助判斷您是否處於靜止狀態以偵測入睡，需要取用您的運動與健身活動數據。";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKWatchOnly = YES;
 				LD_RUNPATH_SEARCH_PATHS = (

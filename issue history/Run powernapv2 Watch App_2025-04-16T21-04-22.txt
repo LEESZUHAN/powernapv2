@@ -1,0 +1,64 @@
+
+Showing Recent Messages
+
+Launch powernapv2 Watch App
+
+Platform: watchOS Simulator
+
+Device Identifier: 426E2D05-B1E6-4263-90AB-4A4248AAE616
+
+Operating System Version: 11.2 (22S99)
+
+Model: Apple Watch Series 9 (45mm) (Watch7,4)
+
+Target Architecture: arm64
+
+Install Actions
+Installing on Apple Watch Series 9 (45mm)
+
+Successfully installed
+
+Environment variables:
+__XPC_DYLD_FRAMEWORK_PATH=/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-watchsimulator:/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-iphonesimulator
+CA_ASSERT_MAIN_THREAD_TRANSACTIONS=0
+SWIFTUI_VIEW_DEBUG=287
+LLVM_PROFILE_FILE=/dev/null
+IDE_DISABLED_OS_ACTIVITY_DT_MODE=1
+__XPC_DYLD_LIBRARY_PATH=/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-watchsimulator:/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-iphonesimulator
+OS_ACTIVITY_TOOLS_OVERSIZE=YES
+METAL_DEBUG_ERROR_MODE=0
+OS_ACTIVITY_TOOLS_PRIVACY=YES
+CFLOG_FORCE_DISABLE_STDERR=1
+OS_LOG_DT_HOOK_MODE=0x07
+__XCODE_BUILT_PRODUCTS_DIR_PATHS=/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-watchsimulator:/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-iphonesimulator
+DYLD_INSERT_LIBRARIES=/Library/Developer/CoreSimulator/Volumes/watchOS_22S99/Library/Developer/CoreSimulator/Profiles/Runtimes/watchOS 11.2.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libLogRedirect.dylib:/Library/Developer/CoreSimulator/Volumes/watchOS_22S99/Library/Developer/CoreSimulator/Profiles/Runtimes/watchOS 11.2.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libBacktraceRecording.dylib:/Library/Developer/CoreSimulator/Volumes/watchOS_22S99/Library/Developer/CoreSimulator/Profiles/Runtimes/watchOS 11.2.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libMainThreadChecker.dylib:/Library/Developer/CoreSimulator/Volumes/watchOS_22S99/Library/Developer/CoreSimulator/Profiles/Runtimes/watchOS 11.2.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libViewDebuggerSupport.dylib
+CA_DEBUG_TRANSACTIONS=0
+DYLD_FRAMEWORK_PATH=/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-watchsimulator:/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-iphonesimulator
+DYLD_LIBRARY_PATH=/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-watchsimulator:/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2-djjfebhqyybnwkepdfjnqcouxxjn/Build/Products/Debug-iphonesimulator:/Library/Developer/CoreSimulator/Volumes/watchOS_22S99/Library/Developer/CoreSimulator/Profiles/Runtimes/watchOS 11.2.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/introspection
+OS_LOG_DT_HOOK_PREFIX=OSLOG-306E2437-B8F2-4DD3-89E8-AAE53110970D
+SQLITE_ENABLE_THREAD_ASSERTIONS=1
+OS_LOG_TRANSLATE_PRINT_MODE=0x80
+NSUnbufferedIO=YES
+__XPC_LLVM_PROFILE_FILE=/dev/null
+TERM=dumb
+METAL_DEVICE_WRAPPER_TYPE=1
+
+Launching debugserver and waiting for com.michaellee.powernapv2.watchkitapp to attach
+
+Launching suspended and the debugger is responsible for resuming.
+
+Successfully launched powernapv2 Watch App
+
+Console logging policy: Synchronously obtain os_logs via libLogRedirect, and read stdio from File Descriptors
+
+View debugging: enabled
+Insert view debugging dylib on launch: enabled
+Queue debugging: enabled
+Memory graph on resource exception: disabled
+Address sanitizer: disabled
+Thread sanitizer: disabled
+
+Using LLDBRPC. The LLDB framework is from /Applications/Xcode.app/Contents/SharedFrameworks
+
+Attached to process with pid 59614
+

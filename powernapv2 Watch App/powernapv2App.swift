@@ -6,12 +6,24 @@
 //
 
 import SwiftUI
+import HealthKit       // For HKAuthorizationStatus comparison
+import UserNotifications // For UNAuthorizationStatus comparison
 
 @main
 struct powernapv2_Watch_AppApp: App {
+    // Create the single instance of the ViewModel here
+    @StateObject private var viewModel = PowerNapViewModel()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // Conditionally show WelcomeView or ContentView based on permissions
+            if viewModel.healthKitAuthorizationStatus == .sharingAuthorized && 
+               viewModel.notificationAuthorizationStatus == .authorized {
+                ContentView()
+                // TODO: Pass ViewModel or necessary data to ContentView if needed later
+            } else {
+                WelcomeView(viewModel: viewModel)
+            }
         }
     }
 }
