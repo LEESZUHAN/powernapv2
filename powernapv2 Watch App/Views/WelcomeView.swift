@@ -3,9 +3,9 @@ import UserNotifications // Needed for UNAuthorizationStatus
 import HealthKit // Needed for HKAuthorizationStatus
 
 struct WelcomeView: View {
-    // 實例化 ViewModel，它將管理權限和 App 狀態
-    // 使用 @StateObject 確保 ViewModel 的生命週期與 View 綁定
-    @StateObject private var viewModel = PowerNapViewModel()
+    // Receive the ViewModel instance from the App level
+    @ObservedObject var viewModel: PowerNapViewModel
+    
     @State private var isRequestingPermissions = false // State to track if requests are in progress
     
     var body: some View {
@@ -173,7 +173,7 @@ struct WelcomeView: View {
 // 預覽 (Preview)
 struct WelcomeView_Previews: PreviewProvider {
     static var previews: some View {
-        WelcomeView()
+        WelcomeView(viewModel: PowerNapViewModel())
     }
 }
 

@@ -20,7 +20,7 @@ struct powernapv2_Watch_AppApp: App {
             if viewModel.healthKitAuthorizationStatus == .sharingAuthorized && 
                viewModel.notificationAuthorizationStatus == .authorized {
                 ContentView()
-                // TODO: Pass ViewModel or necessary data to ContentView if needed later
+                    .environmentObject(viewModel)
             } else {
                 WelcomeView(viewModel: viewModel)
             }
