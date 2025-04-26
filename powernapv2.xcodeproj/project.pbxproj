@@ -55,9 +55,22 @@
 		902BAEDF2DAE9B2E002348F2 /* powernapv2 Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "powernapv2 Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9090B9112DBA8CD2007B3B66 /* Exceptions for "powernapv2 Watch App" folder in "powernapv2 Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 902BAEC22DAE9B2C002348F2 /* powernapv2 Watch App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		902BAEC72DAE9B2C002348F2 /* powernapv2 Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9090B9112DBA8CD2007B3B66 /* Exceptions for "powernapv2 Watch App" folder in "powernapv2 Watch App" target */,
+			);
 			path = "powernapv2 Watch App";
 			sourceTree = "<group>";
 		};
@@ -457,6 +470,7 @@
 				DEVELOPMENT_TEAM = 8BG6CPVQP5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "powernapv2-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = powernapv2;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "為了偵測您的入睡狀態並記錄您的 Power Nap，需要讀取您的心率和靜息心率數據。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "為了將您的 Power Nap 時段記錄到「健康」App 中，方便您統一查看，需要寫入睡眠分析數據。";
@@ -491,6 +505,7 @@
 				DEVELOPMENT_TEAM = 8BG6CPVQP5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "powernapv2-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = powernapv2;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "為了偵測您的入睡狀態並記錄您的 Power Nap，需要讀取您的心率和靜息心率數據。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "為了將您的 Power Nap 時段記錄到「健康」App 中，方便您統一查看，需要寫入睡眠分析數據。";

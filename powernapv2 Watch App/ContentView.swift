@@ -14,42 +14,158 @@ struct ContentView: View {
     @EnvironmentObject var viewModel: PowerNapViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("PowerNap")
-                .font(.title2)
-                .fontWeight(.bold)
-                .frame(maxWidth: .infinity, alignment: .center) // Center title
+        // Wrap in NavigationView for navigation capability
+        NavigationView {
+            // Wrap the content in a ScrollView to allow scrolling
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("PowerNap")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .frame(maxWidth: .infinity, alignment: .center) // Center title
 
-            Divider()
+                    Divider()
 
-            Text("狀態：準備就緒")
-                .font(.headline)
+                    // Display the current NAP state from the ViewModel
+                    HStack {
+                        Text("狀態:")
+                            .font(.headline)
+                        Spacer()
+                        Text(napStateDescription(for: viewModel.napState)) // Use napState for primary status
+                            .font(.headline)
+                    }
+                    // Optionally, show detailed sleep state when detecting/napping
+                    if viewModel.napState == .detecting || viewModel.napState == .napping {
+                        HStack {
+                            Text("偵測狀態:")
+                                .font(.caption)
+                            Spacer()
+                            Text(sleepStateDescription(for: viewModel.sleepState))
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
 
-            // Display Permission Status for confirmation
-            HStack {
-                Text("通知權限:")
-                Spacer()
-                Text(viewModel.notificationAuthorizationStatus.description)
-                    .foregroundColor(statusColor(for: viewModel.notificationAuthorizationStatus))
+                    // Display Permission Status for confirmation
+                    HStack {
+                        Text("通知權限:")
+                        Spacer()
+                        Text(viewModel.notificationAuthorizationStatus.description)
+                            .foregroundColor(statusColor(for: viewModel.notificationAuthorizationStatus))
+                    }
+
+                    HStack {
+                        Text("健康權限:")
+                        Spacer()
+                        Text(viewModel.healthKitAuthorizationStatus.description)
+                            .foregroundColor(statusColor(for: viewModel.healthKitAuthorizationStatus))
+                    }
+                    
+                    Divider()
+
+                    // Display Heart Rate Data
+                    HStack {
+                        Text("即時心率 (HR):")
+                        Spacer()
+                        Text(heartRateText)
+                    }
+                    
+                    HStack {
+                        Text("靜息心率 (RHR):")
+                        Spacer()
+                        Text(restingHeartRateText)
+                    }
+                    
+                    Divider()
+
+                    // Display Countdown Timer
+                    HStack {
+                        Text("剩餘時間:")
+                            .font(.headline)
+                        Spacer()
+                        Text(formatTimeInterval(viewModel.timeRemaining))
+                            .font(.system(.title2, design: .rounded).monospacedDigit())
+                            .foregroundColor(viewModel.isTimerRunning ? .orange : .gray)
+                    }
+
+                    Divider()
+                    
+                    // Navigation Link to Settings
+                    NavigationLink(destination: SettingsView()) { 
+                        Label("設定小睡時長", systemImage: "timer")
+                    }
+                    
+                    Spacer() // Push content towards the top
+                    
+                    // Start/Stop Button - Dynamically changes based on napState
+                    Button {
+                        if viewModel.napState == .idle || viewModel.napState == .finished {
+                            viewModel.startNap()
+                        } else {
+                            viewModel.stopNap()
+                        }
+                    } label: {
+                        if viewModel.napState == .idle || viewModel.napState == .finished {
+                            Label("開始小睡", systemImage: "powersleep")
+                        } else {
+                            Label("停止小睡", systemImage: "stop.circle.fill")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint( (viewModel.napState == .idle || viewModel.napState == .finished) ? .green : .red )
+                    .disabled(viewModel.healthKitAuthorizationStatus != .sharingAuthorized) // Disable if no HK permission
+
+                }
+                .padding()
             }
-
-            HStack {
-                Text("健康權限:")
-                Spacer()
-                Text(viewModel.healthKitAuthorizationStatus.description)
-                    .foregroundColor(statusColor(for: viewModel.healthKitAuthorizationStatus))
-            }
-            
-            Spacer() // Push content to the top
-            
-            // TODO: Add Start/Stop button later
-            Button("開始小睡 (尚未實作)") {
-                // Action to start nap detection/timer
-            }
-            .disabled(true) // Disable for now
-
+             // Add a title to the NavigationView itself if desired
+             // .navigationTitle("主畫面") // Optional: Can keep the title inside the VStack
         }
-        .padding()
+    }
+    
+    // MARK: - Computed Properties for Display
+    
+    private func napStateDescription(for state: NapState) -> String {
+        switch state {
+        case .idle: return "準備就緒"
+        case .detecting: return "偵測入睡中..."
+        case .napping: return "小睡中..."
+        case .paused: return "已暫停"
+        case .finished: return "小睡完成"
+        case .error(let msg): return "錯誤: \(msg)"
+        }
+    }
+    
+    private func sleepStateDescription(for state: SleepState) -> String {
+        switch state {
+        case .awake: return "清醒"
+        case .detecting: return "偵測中..."
+        case .asleep: return "已入睡"
+        case .disturbed: return "睡眠被中斷"
+        case .finished: return "小睡完成"
+        case .error(let message): return "錯誤: \(message)"
+        }
+    }
+    
+    private var heartRateText: String {
+        guard let hr = viewModel.heartRate else { return "--" }
+        return String(format: "%.0f bpm", hr)
+    }
+    
+    private var restingHeartRateText: String {
+        guard let rhr = viewModel.restingHeartRate else { return "--" }
+        return String(format: "%.0f bpm", rhr)
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func formatTimeInterval(_ interval: TimeInterval?) -> String {
+        guard let interval = interval, interval > 0 else {
+            return "--:--"
+        }
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
     
     // Helper function to determine status color

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>mindfulness</string>
+	</array>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>com.michaellee.powernapv2</string> 
+	<key>WKWatchOnly</key>
+	<true/>
+	<key>WKRunsIndependentlyOfCompanionApp</key>
+	<true/>
+    <!-- 其他必要的鍵值對 Xcode 通常會自動管理，例如 Bundle Name, Version 等 -->
+    <!-- 這裡確保 WKBackgroundModes 被正確包含 -->
+</dict>
+</plist> 

@@ -36,7 +36,7 @@ PowerNap 是一款專為 Apple Watch 設計的應用程式，旨在協助使用�
 - 收集用戶睡眠心率數據，進行個人化閾值優化
 - 綜合分析平均睡眠心率、最低心率和心率變異性指標
 - 根據用戶實際數據逐步優化睡眠檢測閾值
-- 模型更新規則：使用7天後首次分析，之後每14天更新一次
+- 模型更新規則：使用7天後首次分析，之後每7天更新一次
 
 **4. 綜合判定公式**：
 ```
@@ -78,7 +78,7 @@ Detect Sleep if: (Heart_Rate ≤ RHR × age_threshold) AND (Motion_level ≤ Mth
 
 1. **設置階段**：
    - 使用滾輪選擇器直觀選擇 1-30 分鐘範圍內的任意時間
-   - 年齡組選擇設定（影響心率判定標準）
+   - 年齡組選擇設定（影響心率判定標準）(初次使用app時，若可以從系統得到使用者年齡，直接採用。若否，請使用者選擇年齡區間)
    - 可選的設置（如喚醒鈴聲選擇）
 
 2. **監測階段**：
@@ -132,7 +132,7 @@ Detect Sleep if: (Heart_Rate ≤ RHR × age_threshold) AND (Motion_level ≤ Mth
 
 - 開發語言：Swift
 - 框架：SwiftUI（介面）、HealthKit（健康數據）、CoreMotion（動作感測）
-- 目標 OS：watchOS 7.0+
+- 目標 OS：watchOS 10.0+
 - 開發工具：最新版 Xcode
 
 ## 參考數據

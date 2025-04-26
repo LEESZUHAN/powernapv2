@@ -39,14 +39,42 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     }
     
     // --- 發送通知 (第三階段實現) ---
-    func scheduleWakeUpNotification(duration: TimeInterval, hapticType: String?, soundEnabled: Bool) {
-        print("TODO: 實現發送喚醒通知的邏輯")
-        // 需要創建 UNMutableNotificationContent 和 UNTimeIntervalNotificationTrigger
+    // 移除舊參數，改為立即觸發（帶微小延遲）
+    func scheduleWakeUpNotification(in timeInterval: TimeInterval = 0.1) {
+        print("NotificationService: 準備安排喚醒通知...")
+        
+        let content = UNMutableNotificationContent()
+        content.title = "小睡時間到！"
+        content.body = "起床囉！祝你精神飽滿！"
+        content.sound = .default // 使用預設提示音
+        // 設置為時間敏感通知，以覆蓋勿擾模式等
+        content.interruptionLevel = .timeSensitive 
+        content.categoryIdentifier = "WAKE_UP_CATEGORY" // 可選：用於自定義操作
+
+        // 使用微小延遲觸發
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(timeInterval, 0.1), repeats: false)
+        
+        let requestIdentifier = "wakeUpNotification"
+        let request = UNNotificationRequest(identifier: requestIdentifier, content: content, trigger: trigger)
+
+        notificationCenter.add(request) { error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("安排喚醒通知失敗: \(error.localizedDescription)")
+                } else {
+                    print("喚醒通知已成功安排 (ID: \(requestIdentifier))，將在 \(trigger.timeInterval) 秒後觸發。")
+                }
+            }
+        }
     }
     
     func cancelPendingNotifications() {
-        print("TODO: 實現取消待處理通知的邏輯")
-        // notificationCenter.removeAllPendingNotificationRequests()
+        print("NotificationService: 取消所有待處理通知...")
+        notificationCenter.getPendingNotificationRequests { requests in
+            print("待處理通知數量: \(requests.count)")
+        }
+        notificationCenter.removeAllPendingNotificationRequests()
+        print("已發送取消請求。")
     }
     
     // --- UNUserNotificationCenterDelegate 方法 (可選實現) ---
