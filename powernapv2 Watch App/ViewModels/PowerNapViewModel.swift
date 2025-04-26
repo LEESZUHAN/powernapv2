@@ -208,130 +208,143 @@ class PowerNapViewModel: ObservableObject {
     func requestHealthKitPermission(completion: @escaping (Bool, Error?) -> Void) {
         // Pass the completion handler down to the service
         healthKitService.requestAuthorization { [weak self] granted, error in
-            guard let self = self else { 
-                completion(false, error) // Ensure completion is called even if self is nil
-                return
+            // Ensure execution on MainActor as we might update state
+            Task { @MainActor in
+                guard let self = self else { 
+                    completion(false, error) // Ensure completion is called even if self is nil
+                    return
+                }
+                
+                print("ViewModel: HealthKit 權限請求回調，結果: \(granted), 錯誤: \(error?.localizedDescription ?? "無")")
+                
+                // Check the result of the request itself.
+                // If the request was granted (user interacted and didn't cancel/error out),
+                // proceed to fetch/start queries. The service's checkAuthorizationStatus 
+                // has already updated the published status in the background via Combine.
+                if granted {
+                     print("HealthKit 權限請求交互完成，嘗試獲取 RHR 並啟動 HR 查詢...")
+                    // Assume necessary types were granted if the overall request succeeded.
+                    // HealthKitService queries might fail internally if specific read types were denied,
+                    // but we initiate them here based on the successful authorization flow.
+                    self.healthKitService.fetchRestingHeartRate()
+                    self.healthKitService.startHeartRateQuery()
+                    // 同時開始睡眠偵測 (如果邏輯是授權後立即開始)
+                    print("ViewModel: 開始睡眠偵測...")
+                    self.sleepDetectionService.startDetection()
+                } else {
+                    print("HealthKit 權限請求交互未成功或用戶拒絕/取消。")
+                    // Ensure HR query is stopped if it was running
+                    self.healthKitService.stopHeartRateQuery()
+                    // 如果權限失敗，也停止睡眠偵測
+                    print("ViewModel: 停止睡眠偵測...")
+                    self.sleepDetectionService.stopDetection()
+                    self.stopCountdownTimer(reason: "HealthKit 權限請求失敗") // Also stop timer
+                }
+                
+                // Call the completion handler received from the View
+                completion(granted, error)
             }
-            
-            print("ViewModel: HealthKit 權限請求回調，結果: \(granted), 錯誤: \(error?.localizedDescription ?? "無")")
-            
-            // Check the result of the request itself.
-            // If the request was granted (user interacted and didn't cancel/error out),
-            // proceed to fetch/start queries. The service's checkAuthorizationStatus 
-            // has already updated the published status in the background via Combine.
-            if granted {
-                 print("HealthKit 權限請求交互完成，嘗試獲取 RHR 並啟動 HR 查詢...")
-                // Assume necessary types were granted if the overall request succeeded.
-                // HealthKitService queries might fail internally if specific read types were denied,
-                // but we initiate them here based on the successful authorization flow.
-                self.healthKitService.fetchRestingHeartRate()
-                self.healthKitService.startHeartRateQuery()
-                // 同時開始睡眠偵測 (如果邏輯是授權後立即開始)
-                print("ViewModel: 開始睡眠偵測...")
-                self.sleepDetectionService.startDetection()
-            } else {
-                print("HealthKit 權限請求交互未成功或用戶拒絕/取消。")
-                // Ensure HR query is stopped if it was running
-                self.healthKitService.stopHeartRateQuery()
-                // 如果權限失敗，也停止睡眠偵測
-                print("ViewModel: 停止睡眠偵測...")
-                self.sleepDetectionService.stopDetection()
-                self.stopCountdownTimer(reason: "HealthKit 權限請求失敗") // Also stop timer
-            }
-            
-            // Call the completion handler received from the View
-            completion(granted, error)
         }
     }
     
     func requestNotificationPermission(completion: @escaping (Bool, Error?) -> Void) {
         // Pass the completion handler down to the service
         notificationService.requestAuthorization { granted, error in
-            print("ViewModel: 通知權限請求回調，結果: \(granted), 錯誤: \(error?.localizedDescription ?? "無")")
-            // Call the completion handler received from the View
-            completion(granted, error)
+            // Ensure completion handler runs on MainActor if it updates UI
+            Task { @MainActor in
+                print("ViewModel: 通知權限請求回調，結果: \(granted), 錯誤: \(error?.localizedDescription ?? "無")")
+                // Call the completion handler received from the View
+                completion(granted, error)
+            }
         }
     }
     
     // MARK: - Countdown Timer Logic
     private func startCountdownTimer() {
-        // 如果計時器已在運行，則不重複啟動
         guard !isTimerRunning else {
             print("計時器已在運行中，無需重新啟動。")
             return
         }
         
-        // 確保選擇的時長有效
         guard selectedNapDuration > 0 else {
             print("錯誤：選擇的小睡時長無效 (\(selectedNapDuration) 分鐘)，無法啟動計時器。")
-            // Maybe set sleepState to error?
-            sleepState = .error("無效的小睡時長")
+            // Update state on MainActor
+            Task { @MainActor in
+                sleepState = .error("無效的小睡時長")
+            }
             return
         }
-        
-        // 重置狀態
-        stopCountdownTimer(reason: "啟動新計時器") // 確保先停止舊的（如果有）
-        
+
+        stopCountdownTimer(reason: "啟動新計時器")
+
         let totalTime = TimeInterval(selectedNapDuration * 60)
-        timeRemaining = totalTime
-        isTimerRunning = true
-        print("計時器啟動，總時長: \(totalTime) 秒 (\(selectedNapDuration) 分鐘)。")
+        // Update state on MainActor
+        Task { @MainActor in
+            self.timeRemaining = totalTime
+            self.isTimerRunning = true
+            print("計時器啟動，總時長: \(totalTime) 秒 (\(selectedNapDuration) 分鐘)。")
+        }
 
-        // 創建並啟動計時器
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
+            // Perform updates on the MainActor inside the timer's closure
+            Task { @MainActor in
+                guard let self = self else {
+                    timer.invalidate()
+                    return
+                }
 
-            // 檢查剩餘時間
-            guard var remaining = self.timeRemaining else {
-                print("錯誤：計時器觸發時 timeRemaining 為 nil。停止計時器。")
-                self.stopCountdownTimer(reason: "內部錯誤 (timeRemaining is nil)")
-                return
-            }
+                guard var remaining = self.timeRemaining else {
+                    print("錯誤：計時器觸發時 timeRemaining 為 nil。停止計時器。")
+                    self.stopCountdownTimer(reason: "內部錯誤 (timeRemaining is nil)") // stopCountdownTimer is @MainActor isolated
+                    return
+                }
 
-            remaining -= 1
-            self.timeRemaining = remaining
-             print("剩餘時間: \(remaining) 秒") // Debug log
-
-            if remaining <= 0 {
-                print("計時結束！觸發喚醒。")
-                self.timeRemaining = 0 // Ensure it shows 0
-                self.stopCountdownTimer(reason: "計時完成")
+                remaining -= 1
+                self.timeRemaining = remaining // @Published property, update on MainActor
                 
-                // Trigger wake-up notification
-                self.notificationService.scheduleWakeUpNotification()
-                
-                // Update napState to finished (handled by stopCountdownTimer now? No, handle here)
-                print("ViewModel: Timer finished, setting napState to .finished")
-                self.napState = .finished
-                
-                // Stop the extended runtime session when timer finishes
-                print("ViewModel: 計時結束，停止 Extended Runtime Session。")
-                self.extendedRuntimeManager.stopSession()
+                if remaining <= 0 {
+                    print("計時結束！觸發喚醒。")
+                    self.timeRemaining = 0 // Update on MainActor
+                    self.stopCountdownTimer(reason: "計時完成") // Call @MainActor func
+                    
+                    // Trigger wake-up notification (Assuming NotificationService is Sendable or accessed correctly)
+                    // If NotificationService itself isn't Sendable or methods aren't actor-isolated,
+                    // this might need further attention, but for now, let's assume it's okay or the service handles its own concurrency.
+                    // For safety, ensure NotificationService calls are appropriate. Let's call it from MainActor for now.
+                    self.notificationService.scheduleWakeUpNotification() 
+                    
+                    print("ViewModel: Timer finished, setting napState to .finished")
+                    self.napState = .finished // Update on MainActor
+                    
+                    print("ViewModel: 計時結束，停止 Extended Runtime Session。")
+                    // Assuming ExtendedRuntimeManager is Sendable or handles its concurrency.
+                    // Let's call it from MainActor for safety for now.
+                    self.extendedRuntimeManager.stopSession()
+                } else {
+                    // Optional: Move print inside Task if it depends on UI state
+                     print("剩餘時間: \(remaining) 秒") 
+                }
             }
         }
     }
 
     private func stopCountdownTimer(reason: String) {
-        guard isTimerRunning else { return } // Don't print if already stopped
+        // Accessing isTimerRunning, countdownTimer, timeRemaining - needs MainActor
+        guard isTimerRunning else { return } 
         print("停止計時器，原因: \(reason)")
         countdownTimer?.invalidate()
         countdownTimer = nil
         isTimerRunning = false
-        timeRemaining = nil // Reset time remaining when stopped
-        
-        // Also cancel any pending wake-up notification and stop session
+        timeRemaining = nil
+
         if reason != "計時完成" { 
              print("取消待處理的喚醒通知 (若有)")
+             // Assuming NotificationService is okay to call from MainActor
              notificationService.cancelPendingNotifications()
              print("ViewModel: 計時器提前停止，停止 Extended Runtime Session。")
+             // Assuming ExtendedRuntimeManager is okay to call from MainActor
              extendedRuntimeManager.stopSession()
         }
-        // Set state to finished ONLY if stopped due to completion
-        // Correction: State transition to finished is handled where timer completes.
-        // Resetting napState to idle is handled by stopNap() if called from there.
     }
     
     // MARK: - App Lifecycle / State Management (未來實現)
@@ -340,6 +353,7 @@ class PowerNapViewModel: ObservableObject {
         // Ensure permissions are okay
         guard healthKitAuthorizationStatus == .sharingAuthorized else {
             print("無法開始小睡：HealthKit 權限未授權。")
+            // Optionally provide feedback to the user here
             return
         }
         // Reset state just in case (stop previous timer, cancel notifications, set state to detecting)
@@ -387,39 +401,44 @@ class PowerNapViewModel: ObservableObject {
     // MARK: - Age Group Handling
     private func determineUserAgeGroup() {
         print("開始確定使用者年齡組...")
-        var determinedGroup: AgeGroup = .adult // Keep track of the determined group
+        // This method accesses @MainActor properties like healthKitAuthorizationStatus
+        // and potentially updates userAgeGroup (@Published). It should run on MainActor.
+        // Since the entire class is @MainActor, this is okay unless called from a non-main context.
+        // The call from init() is fine because init runs on the main actor implicitly.
+        
         var source: String = "預設值"
         
         // 1. Check UserDefaults for manually set group first
         if let savedRawValue = UserDefaults.standard.string(forKey: userSetAgeGroupRawValueKey),
            let savedGroup = AgeGroup(rawValue: savedRawValue) {
-            determinedGroup = savedGroup
             source = "手動設定"
-            print("找到手動設定的年齡組: \(determinedGroup)。")
+            print("找到手動設定的年齡組: \(savedGroup)。")
             // Update the published property if different
-            if self.userAgeGroup != determinedGroup {
-                 self.userAgeGroup = determinedGroup
+            if self.userAgeGroup != savedGroup {
+                 self.userAgeGroup = savedGroup
             }
             // Update the SleepDetectionService
-            sleepDetectionService.updateAgeGroup(determinedGroup)
+            sleepDetectionService.updateAgeGroup(savedGroup)
             return // Prioritize manual setting
         }
         
         // 2. If no manual setting, try fetching from HealthKit (only if authorized)
         guard healthKitAuthorizationStatus == .sharingAuthorized else {
             print("HealthKit 未授權，無法獲取出生日期。使用預設年齡組 .adult")
-            determinedGroup = .adult
             source = "預設值 (HK 未授權)"
-            if self.userAgeGroup != determinedGroup {
-                self.userAgeGroup = determinedGroup
+            // Update published property if different from current (which should be .adult initially)
+            if self.userAgeGroup != .adult { 
+                self.userAgeGroup = .adult
             }
-            sleepDetectionService.updateAgeGroup(determinedGroup)
+            sleepDetectionService.updateAgeGroup(.adult) // Ensure service uses default
+            print("最終確定年齡組: .adult，來源: \(source)")
             return
         }
         
         print("未找到手動設定，嘗試從 HealthKit 獲取出生日期...")
         healthKitService.fetchDateOfBirth { [weak self] birthDate in
-            DispatchQueue.main.async { // Ensure UI updates on main thread
+            // Ensure UI updates and property access on main thread
+            Task { @MainActor in 
                 guard let self = self else { return }
                 
                 var finalGroup: AgeGroup = .adult // Default inside completion
@@ -452,6 +471,7 @@ class PowerNapViewModel: ObservableObject {
     
     /// Called from SettingsView when user manually changes the age group
     func updateManualAgeGroup(_ newGroup: AgeGroup) {
+         // This is called from SwiftUI, so it should be on MainActor already
         print("手動更新年齡組為: \(newGroup)")
         if self.userAgeGroup != newGroup {
              self.userAgeGroup = newGroup
@@ -462,5 +482,35 @@ class PowerNapViewModel: ObservableObject {
         
         // Update the SleepDetectionService immediately
         sleepDetectionService.updateAgeGroup(newGroup)
+    }
+} 
+
+// Extension for HKAuthorizationStatus description (Keep or move as needed)
+// Added @retroactive based on build warning
+extension HKAuthorizationStatus: @retroactive CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .notDetermined: return "未決定"
+        case .sharingDenied: return "已拒絕"
+        case .sharingAuthorized: return "已授權"
+        @unknown default:
+            return "未知狀態 (\\(rawValue))"
+        }
+    }
+}
+
+// Extension for UNAuthorizationStatus description (Keep or move as needed)
+// Added @retroactive based on build warning
+extension UNAuthorizationStatus: @retroactive CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .notDetermined: return "未決定"
+        case .denied: return "已拒絕"
+        case .authorized: return "已授權"
+        case .provisional: return "臨時授權"
+        case .ephemeral: return "短暫授權"
+        @unknown default:
+            return "未知狀態 (\\(rawValue))"
+        }
     }
 } 

@@ -22,9 +22,9 @@
 *   **問題描述:** 在 `WelcomeView.swift` 中為 `UNAuthorizationStatus` 和 `HKAuthorizationStatus` 添加 `CustomStringConvertible` 擴展時，Xcode 顯示警告，提示未來若系統框架自己實現該協議可能導致衝突。
 *   **發現時間:** 2025-04-15 (基於 Build log)
 *   **嚴重性:** Low (低)
-*   **狀態:** Open (Cleanup - 待清理)
+*   **狀態:** Resolved (已解決)
 *   **分析:** 這是 Swift 對擴展系統類型添加協議遵循的標準警告。目前用於預覽和調試，不影響功能。
-*   **解決方案/後續:** 未來可考慮使用 `@retroactive` 標記或移除擴展。
+*   **解決方案:** 已將擴展移至 `PowerNapViewModel.swift`，並使用 `@retroactive` 標記。
 
 ### 3. `WelcomeView.swift` 初始編譯錯誤 (Cannot find type...)
 
@@ -79,9 +79,9 @@
 *   **問題描述:** `PowerNapViewModel.swift` 中的 `Timer.scheduledTimer` 閉包直接訪問或修改 `@MainActor` 隔離的屬性/方法 (如 `timeRemaining`, `napState`, `notificationService`, `extendedRuntimeManager`, `stopCountdownTimer`)，導致多個警告，提示這在 Swift 6 中將是錯誤 (Build log 2025-04-23T23-29-00)。
 *   **發現時間:** 2025-04-23
 *   **嚴重性:** Medium (中 - 未來版本兼容性)
-*   **狀態:** Open (Needs Fix - 待修復)
+*   **狀態:** Resolved (已解決)
 *   **分析:** Timer 的閉包默認不在 Main Actor 上執行，直接訪問 Main Actor 隔離的狀態可能導致資料競爭。
-*   **解決方案/後續:** 需要將閉包內的 UI 更新和狀態修改代碼包裝在 `Task { @MainActor in ... }` 或 `DispatchQueue.main.async { ... }` 中以確保線程安全。
+*   **解決方案:** 已使用 `Task { @MainActor in ... }` 將閉包內訪問 Main Actor 隔離的屬性/方法的程式碼包裝起來，確保線程安全。
 
 ### 9. 未使用的變數警告
 
