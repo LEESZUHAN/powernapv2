@@ -97,73 +97,89 @@ class SleepDetectionService: ObservableObject {
 
     // MARK: - Core Logic
     private func evaluateSleepState() {
-        // Guard against missing data needed for evaluation
-        guard let currentHR = healthKitService.latestHeartRate,
-              let currentRHR = self.latestRHR
-              /* Use currentAgeGroup now */ else {
-            // If essential data is missing, reset timers and stay in a non-asleep state
-            if currentSleepState != .awake { // Only update if not already awake
-                resetTimersAndState(to: .awake, reason: "Missing HR or RHR data")
+        // Step 1: Ensure we have at least the current heart rate.
+        guard let currentHR = healthKitService.latestHeartRate else {
+            // Log if state changes, reset only if not already awake.
+            if currentSleepState != .awake {
+                print("SleepDetectionService: [Guard Fail] Missing HR data. Resetting to Awake.")
+                resetTimersAndState(to: .awake, reason: "Missing HR data")
             }
             return
         }
+        
+        // Step 2: Get RHR if available.
+        let currentRHR = self.latestRHR 
 
-        // Use the current age group and adjustment offset
-        let hrThreshold = calculateHeartRateThreshold(rhr: currentRHR, adjustmentOffset: currentAdjustmentOffset)
-        let requiredDuration = currentAgeGroup.minDurationForSleepDetection // Get duration from age group
-
-        // print("SleepDetectionService: Evaluating - AgeGroup: \(currentAgeGroup) HR: \(currentHR), RHR: \(currentRHR), Threshold: \(hrThreshold), Still: \(isCurrentlyStill), Required Duration: \(requiredDuration)s, State: \(currentSleepState)")
-
-        // Check if conditions for sleep are currently met
-        let conditionsMet = currentHR < hrThreshold && isCurrentlyStill
+        // Step 3: Determine if conditions are met (Requires RHR).
+        var conditionsMet = false
+        var calculatedThreshold: Double? = nil // For logging
+        if let rhr = currentRHR {
+            let threshold = calculateHeartRateThreshold(rhr: rhr, adjustmentOffset: currentAdjustmentOffset)
+            calculatedThreshold = threshold
+            conditionsMet = currentHR < threshold && isCurrentlyStill
+            // print("Evaluating with RHR: \(rhr), Threshold: \(threshold), Conditions Met: \(conditionsMet)")
+        } else {
+            // RHR not available yet, conditions cannot be met.
+            conditionsMet = false 
+            // print("Waiting for RHR...")
+        }
+        
+        // Step 4: State transition logic.
+        let requiredDuration = currentAgeGroup.minDurationForSleepDetection
 
         switch currentSleepState {
             
         case .awake, .detecting, .disturbed:
             if conditionsMet {
-                // Conditions are met, start or continue the low HR timer
+                // Conditions met (HR, RHR, Still) - Start or continue timer.
                 if lowHRStartTime == nil {
-                    print("SleepDetectionService: Conditions met. Starting timer.")
+                    print("SleepDetectionService: [State: \(currentSleepState)] Conditions met (HR < \(calculatedThreshold ?? -1)) & Still. Starting timer.")
                     lowHRStartTime = Date()
-                    // Transition to detecting only if currently awake or disturbed
-                    if currentSleepState == .awake || currentSleepState == .disturbed {
-                         currentSleepState = .detecting
+                    if currentSleepState != .detecting { // Transition to detecting if not already there.
+                        currentSleepState = .detecting
                     }
                 } else {
-                    // Low HR timer is running, check if duration is met using requiredDuration
+                    // Timer running, check duration.
                     if let startTime = lowHRStartTime, Date().timeIntervalSince(startTime) >= requiredDuration {
-                        print("SleepDetectionService: Duration met. State -> Asleep.")
+                        print("SleepDetectionService: [State: Detecting] Duration met (>= \(requiredDuration)s). Transitioning to Asleep.")
                         currentSleepState = .asleep
-                        lowHRStartTime = nil // Reset timer after transition
+                        lowHRStartTime = nil // Reset timer after transition.
                     } else {
-                         currentSleepState = .detecting // Ensure state is detecting
+                        // Duration not met yet, remain in detecting state.
+                        // print("SleepDetectionService: [State: Detecting] Conditions met, duration not yet met.")
                     }
                 }
             } else {
-                // Conditions are NOT met (HR high or user moved)
+                // Conditions NOT met (HR too high, moved, OR RHR missing).
                 if lowHRStartTime != nil {
-                    // If the timer was running, conditions just failed
-                     print("SleepDetectionService: Conditions no longer met. Resetting timer.")
-                     resetTimersAndState(to: .awake, reason: "HR High or Moved")
-                 } else if currentSleepState == .detecting {
-                     // If it was detecting but conditions failed before timer started (e.g. immediate move), go back to awake
-                     print("SleepDetectionService: Conditions failed while detecting. Moving to Awake.")
-                     currentSleepState = .awake
-                 } else {
-                    // Already awake or disturbed, and conditions still not met, no state change needed
-                 }
+                    // Timer was running, but conditions failed.
+                    print("SleepDetectionService: [State: Detecting] Conditions no longer met (HR >= \(calculatedThreshold ?? -1) or Moved or RHR missing). Resetting timer and state to Awake.")
+                    resetTimersAndState(to: .awake, reason: "Conditions failed while timer running")
+                } else if currentSleepState == .detecting {
+                    // Was detecting, but conditions failed before timer started OR RHR is still missing.
+                    if currentRHR == nil {
+                        // Do nothing, just wait for RHR.
+                        // print("SleepDetectionService: [State: Detecting] Still waiting for RHR.")
+                    } else {
+                        // RHR is present, but HR high or moved.
+                        print("SleepDetectionService: [State: Detecting] Conditions failed (HR >= \(calculatedThreshold ?? -1) or Moved). Resetting to Awake.")
+                        resetTimersAndState(to: .awake, reason: "Conditions failed before timer start")
+                    }
+                } else {
+                    // State is .awake or .disturbed, conditions still not met. No change needed.
+                }
             }
             
         case .asleep:
-            // If conditions are no longer met (HR high or user moved)
             if !conditionsMet {
-                print("SleepDetectionService: Conditions no longer met while Asleep. State -> Awake.")
-                resetTimersAndState(to: .awake, reason: "HR High or Moved while Asleep")
+                // Conditions failed while asleep.
+                print("SleepDetectionService: [State: Asleep] Conditions no longer met (HR >= \(calculatedThreshold ?? -1) or Moved or RHR missing). Resetting to Awake.")
+                resetTimersAndState(to: .awake, reason: "Conditions failed while asleep")
             }
-            // Otherwise, remain asleep
+            // Otherwise, remain asleep.
 
         case .finished, .error:
-            // No state changes from here in this logic
+            // No state changes triggered by evaluation.
             break 
         }
     }

@@ -327,6 +327,9 @@ class PowerNapViewModel: ObservableObject {
              notificationService.cancelPendingNotifications()
              print("ViewModel: 計時器提前停止，停止 Extended Runtime Session。")
              extendedRuntimeManager.stopSession()
+             // Also stop the workout session if stopped early
+             print("ViewModel: 計時器提前停止，停止 Workout Session。")
+             healthKitService.stopWorkoutSession()
         }
     }
     
@@ -335,30 +338,52 @@ class PowerNapViewModel: ObservableObject {
         print("ViewModel: startNap() called. Starting services...")
         guard healthKitAuthorizationStatus == .sharingAuthorized else {
             print("Cannot start nap: HealthKit permission not authorized.")
-            napState = .error("HealthKit 權限未授權") // Update state with error
+            napState = .error("HealthKit 權限未授權")
             return
         }
         stopCountdownTimer(reason: "Starting new nap manually")
+        
+        print("ViewModel: Starting Workout Session.")
+        healthKitService.startWorkoutSession() 
+        
+        // Start other services immediately
         sleepState = .detecting
         napState = .detecting
-        
         motionService.startUpdates()
         healthKitService.startHeartRateQuery()
         healthKitService.fetchRestingHeartRate()
         sleepDetectionService.startDetection()
         
-        print("ViewModel: Starting Extended Runtime Session.")
-        extendedRuntimeManager.startSession()
+        // Introduce a small delay before starting the extended runtime session
+        Task {
+            // Delay for e.g., 0.5 seconds
+            try? await Task.sleep(nanoseconds: 500_000_000) 
+            // Ensure we are still in the detecting state before starting runtime
+            guard self.napState == .detecting else { 
+                print("ViewModel: Nap cancelled before extended runtime could start.")
+                return
+            }
+            print("ViewModel: Starting Extended Runtime Session after delay.")
+            // Start the extended runtime session on the MainActor
+            await MainActor.run {
+                 extendedRuntimeManager.startSession()
+            }
+        }
     }
     
     func stopNap() {
         print("ViewModel: stopNap() called. Stopping services...")
+        // Stop HKWorkoutSession first or concurrently
+        print("ViewModel: Stopping Workout Session.")
+        healthKitService.stopWorkoutSession()
+        
         motionService.stopUpdates()
         healthKitService.stopHeartRateQuery()
         sleepDetectionService.stopDetection()
-        stopCountdownTimer(reason: "Nap stopped manually")
+        stopCountdownTimer(reason: "Nap stopped manually") // This also stops runtime session
         sleepState = .awake
         napState = .idle
+        // Runtime session is stopped within stopCountdownTimer
     }
     
     // MARK: - Navigation (用於處理權限拒絕時跳轉設定)
@@ -448,13 +473,17 @@ class PowerNapViewModel: ObservableObject {
     // MARK: - Nap Lifecycle
     func completeNapEarly() {
         print("ViewModel: completeNapEarly() called. Finishing nap manually...")
-        stopCountdownTimer(reason: "Nap completed early manually")
+        // Stop HKWorkoutSession
+        print("ViewModel: Stopping Workout Session.")
+        healthKitService.stopWorkoutSession()
+        
+        stopCountdownTimer(reason: "Nap completed early manually") // This also stops runtime session
         sleepState = .awake
         napState = .finished
         motionService.stopUpdates()
         healthKitService.stopHeartRateQuery()
         sleepDetectionService.stopDetection() 
-        // stopCountdownTimer already stops the session
+        // stopCountdownTimer already stops the runtime session
     }
 
     // MARK: - Helper Methods

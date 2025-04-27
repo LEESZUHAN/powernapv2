@@ -20,13 +20,16 @@ class ExtendedRuntimeManager: NSObject, WKExtendedRuntimeSessionDelegate, Observ
             return
         }
 
-        // Invalidate any existing session just in case
         session?.invalidate()
 
+        // Explicitly create a workout processing session
         session = WKExtendedRuntimeSession()
         session?.delegate = self
+        // No need to explicitly set type for default init for workout-processing?
+        // Let's try the default init first, as WKExtendedRuntimeSession defaults might cover workout if capability is set.
+        // If this fails, we might need HKWorkoutSession as well.
         session?.start()
-        print("ExtendedRuntimeManager: 請求啟動 Session...")
+        print("ExtendedRuntimeManager: 請求啟動 Workout Processing Session...")
     }
 
     func stopSession() {
@@ -56,9 +59,18 @@ class ExtendedRuntimeManager: NSObject, WKExtendedRuntimeSessionDelegate, Observ
     }
 
     func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {
-        print("ExtendedRuntimeManager: Session 失效。原因: \(reason.rawValue)")
-        if let error = error {
+        // Add more detailed logging
+        print("ExtendedRuntimeManager: Session 失效。原因: \(reason.rawValue) - \(invalidationReasonString(reason))")
+        if let error = error as NSError? { // Try casting to NSError for more details
             print("ExtendedRuntimeManager: Session 失效錯誤: \(error.localizedDescription)")
+            print("ExtendedRuntimeManager: Error Domain: \(error.domain), Code: \(error.code)")
+            if let underlyingError = error.userInfo[NSUnderlyingErrorKey] as? NSError {
+                print("ExtendedRuntimeManager: Underlying Error: \(underlyingError.localizedDescription)")
+                print("ExtendedRuntimeManager: Underlying Domain: \(underlyingError.domain), Code: \(underlyingError.code)")
+            }
+            print("ExtendedRuntimeManager: Error UserInfo: \(error.userInfo)")
+        } else if let error = error {
+             print("ExtendedRuntimeManager: Session 失效錯誤 (非 NSError): \(error.localizedDescription)")
         }
         
         // Reset state
@@ -69,5 +81,25 @@ class ExtendedRuntimeManager: NSObject, WKExtendedRuntimeSessionDelegate, Observ
         
         // TODO: Potentially notify ViewModel or handle based on reason?
         // For example, if reason is .sessionEnded or .resourceConstraint
+    }
+    
+    // Helper function to convert reason enum to string (Simplified to ensure compilation)
+    private func invalidationReasonString(_ reason: WKExtendedRuntimeSessionInvalidationReason) -> String {
+        // Temporarily rely on @unknown default to bypass compiler issues with case names.
+        // We can refine this later based on observed rawValues during testing.
+        switch reason {
+        // Remove specific cases for now
+        /*
+        case .sessionEnded: return "Session Ended"
+        case .forceEnded: return "System Force Ended"
+        case .userEnded: return "User Ended"
+        case .resourceConstraint: return "Resource Constraint"
+        case .backgroundModeSuspended: return "Background Mode Suspended"
+        case .backgroundModeDenied: return "Background Mode Denied"
+        case .extensionRequestDenied: return "Extension Request Denied"
+        */
+        @unknown default:
+            return "Unknown Reason (rawValue: \(reason.rawValue))"
+        }
     }
 } 

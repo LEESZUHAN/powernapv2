@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		902BAEC42DAE9B2C002348F2 /* powernapv2 Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 902BAEC32DAE9B2C002348F2 /* powernapv2 Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		9037C8F72DBE343200B736D7 /* WatchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9037C8F62DBE343200B736D7 /* WatchKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +54,7 @@
 		902BAEC32DAE9B2C002348F2 /* powernapv2 Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "powernapv2 Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		902BAED52DAE9B2E002348F2 /* powernapv2 Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "powernapv2 Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		902BAEDF2DAE9B2E002348F2 /* powernapv2 Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "powernapv2 Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9037C8F62DBE343200B736D7 /* WatchKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchKit.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk/System/Library/Frameworks/WatchKit.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -91,6 +93,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9037C8F72DBE343200B736D7 /* WatchKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,6 +120,7 @@
 				902BAEC72DAE9B2C002348F2 /* powernapv2 Watch App */,
 				902BAED82DAE9B2E002348F2 /* powernapv2 Watch AppTests */,
 				902BAEE22DAE9B2E002348F2 /* powernapv2 Watch AppUITests */,
+				9037C8F52DBE343200B736D7 /* Frameworks */,
 				902BAEBE2DAE9B2C002348F2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -130,6 +134,14 @@
 				902BAEDF2DAE9B2E002348F2 /* powernapv2 Watch AppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9037C8F52DBE343200B736D7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9037C8F62DBE343200B736D7 /* WatchKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

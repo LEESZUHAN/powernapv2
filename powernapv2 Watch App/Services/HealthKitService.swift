@@ -2,16 +2,20 @@ import Foundation
 import HealthKit
 import Combine
 
-class HealthKitService {
+// Make HealthKitService conform to HKWorkoutSessionDelegate
+class HealthKitService: NSObject, HKWorkoutSessionDelegate {
     
     private let healthStore = HKHealthStore()
     private var heartRateQuery: HKQuery? // Store the query to manage its lifecycle
     private var restingHeartRateQuery: HKQuery? // Store the query
+    // Add property for workout session
+    private var workoutSession: HKWorkoutSession?
     
     // --- Published Properties ---
     @Published var authorizationStatus: HKAuthorizationStatus = .notDetermined
     @Published var latestHeartRate: Double? = nil
     @Published var latestRestingHeartRate: Double? = nil
+    @Published var isWorkoutSessionRunning: Bool = false // Track workout session state
     
     // Keep track of background delivery enabling
     private var isBackgroundDeliveryEnabled = false
@@ -27,18 +31,19 @@ class HealthKitService {
     
     private let typesToWrite: Set<HKSampleType> = [
         HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
-        // Add other types if needed
+        // Add workout type if we decide to save workouts
+        // HKObjectType.workoutType()
     ]
     
-    init() {
+    override init() {
+        super.init()
         guard HKHealthStore.isHealthDataAvailable() else {
             print("錯誤：此設備不支持 HealthKit。")
-            // Consider setting a specific error state for authorizationStatus or another property
-            self.authorizationStatus = .sharingDenied // Or a custom state indicating unavailability
+            self.authorizationStatus = .sharingDenied
             return
         }
         print("HealthKitService 初始化完成。")
-        checkAuthorizationStatus() // Check status on initialization
+        checkAuthorizationStatus()
     }
     
     // --- 權限管理 ---
@@ -264,12 +269,75 @@ class HealthKitService {
         }
     }
     
-    // --- 舊的 Placeholder --- (可以保留或刪除)
-    // func fetchRestingHeartRate() { ... }
-    // func startHeartRateQuery() { ... } // Now implemented above
-    // func saveNapSample(startDate: Date, endDate: Date) { ... }
+    // MARK: - Workout Session Management
     
-    // 新增：獲取出生日期的方法
+    func startWorkoutSession(activityType: HKWorkoutActivityType = .other, locationType: HKWorkoutSessionLocationType = .unknown) {
+        guard workoutSession == nil else {
+            print("HealthKitService: Workout session is already active.")
+            return
+        }
+        
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = activityType
+        configuration.locationType = locationType
+        
+        do {
+            workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
+            workoutSession?.delegate = self
+            workoutSession?.startActivity(with: Date())
+            print("HealthKitService: Starting workout session (Activity: \(activityType.rawValue), Location: \(locationType.rawValue))...")
+        } catch {
+            print("HealthKitService: Failed to create workout session: \(error.localizedDescription)")
+            // Handle error, maybe publish a state
+            self.workoutSession = nil // Ensure session is nil on failure
+            DispatchQueue.main.async { self.isWorkoutSessionRunning = false }
+        }
+    }
+    
+    func stopWorkoutSession() {
+        guard let session = workoutSession else {
+            print("HealthKitService: No active workout session to stop.")
+            return
+        }
+        
+        // End the session activity
+        session.end()
+        print("HealthKitService: Ending workout session...")
+        // The delegate method workoutSession(_:didChangeTo:from:date:) will handle state updates and setting session to nil.
+    }
+    
+    // MARK: - HKWorkoutSessionDelegate Methods
+    
+    func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+        print("HealthKitService: Workout Session state changed from \(fromState.rawValue) to \(toState.rawValue)")
+        
+        DispatchQueue.main.async {
+            switch toState {
+            case .running:
+                self.isWorkoutSessionRunning = true
+            case .ended:
+                self.isWorkoutSessionRunning = false
+                self.workoutSession = nil // Clear the session reference once ended
+                print("HealthKitService: Workout session ended.")
+            case .paused, .stopped, .notStarted, .prepared:
+                // Handle other states if necessary, for now just update running status
+                self.isWorkoutSessionRunning = (toState == .running || toState == .paused)
+            @unknown default:
+                print("HealthKitService: Unknown workout session state encountered.")
+            }
+        }
+    }
+    
+    func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        print("HealthKitService: Workout Session failed with error: \(error.localizedDescription)")
+        // Handle the error, e.g., stop related activities, update UI
+        DispatchQueue.main.async {
+            self.isWorkoutSessionRunning = false
+            self.workoutSession = nil
+        }
+    }
+    
+    // --- Date of Birth --- 
     func fetchDateOfBirth(completion: @escaping (Date?) -> Void) {
         print("嘗試獲取出生日期...")
         do {

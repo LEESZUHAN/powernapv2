@@ -6,7 +6,7 @@
 	<true/>
 	<key>WKBackgroundModes</key>
 	<array>
-		<string>mindfulness</string>
+		<string>workout-processing</string>
 	</array>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.michaellee.powernapv2</string> 

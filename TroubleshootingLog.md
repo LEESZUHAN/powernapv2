@@ -135,4 +135,13 @@
 *   **嚴重性:** High (阻礙編譯)
 *   **狀態:** Resolved (已解決)
 *   **分析:** 同一個擴展在專案中的多個檔案內被定義。
-*   **解決方案:** 已從 `WelcomeView.swift` 中刪除重複的擴展定義。 
+*   **解決方案:** 已從 `WelcomeView.swift` 中刪除重複的擴展定義。
+
+### 15. WKExtendedRuntimeSessionInvalidationReason Enum Case Inconsistency
+
+*   **問題描述:** 在 `ExtendedRuntimeManager.swift` 的 `invalidationReasonString` 輔助函數中，嘗試使用不同版本的 `WKExtendedRuntimeSessionInvalidationReason` case 名稱 (例如 `.sessionEnded` vs `.sessionEndedNormally`) 都會導致編譯錯誤。目前的解決方法是暫時移除所有特定 case，只保留 `@unknown default`。
+*   **發現時間:** 2025-04-27
+*   **嚴重性:** Low (低 - 影響除錯日誌可讀性)
+*   **狀態:** Open (Workaround Applied - 待修正)
+*   **分析:** 這可能是 Xcode 版本、watchOS SDK 版本或 Swift 語言版本之間關於此枚舉 case 名稱定義不一致導致的編譯器問題。
+*   **解決方案/後續:** 待確定當前環境實際支援的正確 case 名稱後，恢復 `switch` 語句的完整性，以提高日誌可讀性。 
