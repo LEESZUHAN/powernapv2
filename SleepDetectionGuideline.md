@@ -87,6 +87,16 @@ PowerNap實施漸進式個人化心率模型機制，在用戶使用一段時間
    - 根據心率變異性微調最終閾值
    - 每次最多調整2.5個百分點，避免過度調整
 
+### 手動調整閾值
+
+除了基於年齡組的基礎閾值外，系統還會應用使用者在設定中進行的手動調整 (`adjustmentOffset`)。
+
+- **計算:** 最終的心率百分比閾值 = `年齡組基礎百分比 + 手動調整偏移量`。
+- **影響:** 
+    - 正向偏移 (+%, UI 標示「判定較寬鬆」) 會提高心率門檻值，使 App **更容易**判定入睡。
+    - 負向偏移 (-%, UI 標示「判定較嚴格」) 會降低心率門檻值，使 App **更難**判定入睡。
+- **應用:** `calculateHeartRateThreshold` 方法會使用這個調整後的百分比來計算最終的心率門檻 (與 RHR 相乘)。
+
 ## 睡眠狀態判定
 
 ### 狀態定義
@@ -149,19 +159,4 @@ PowerNap定義了四種睡眠狀態：
 1. **心率數據**：
    - 靜息心率：`restingHeartRate`
    - 當前心率：`currentHeartRate`
-   - 判定閾值：`restingHeartRate * ageGroupThreshold`
-   - 用戶年齡組：`userAgeGroup`
-
-2. **動作數據**：
-   - 當前動作水平：`currentMotionLevel`
-   - 當前閾值：`motionThreshold`
-   - 靜止持續時間：`stillDuration`
-
-3. **睡眠狀態**：
-   - 當前狀態：`currentSleepState`
-   - 條件滿足狀況：`isHeartRateConditionMet`和`isMotionConditionMet`
-   - 潛在睡眠持續時間：`potentialSleepDuration`
-
----
-
-*本文檔為PowerNap開發團隊內部參考資料，對應用的具體實現提供技術說明，可根據測試反饋進行調整。* 
+   - 判定閾值：`

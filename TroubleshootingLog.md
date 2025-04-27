@@ -126,4 +126,13 @@
 *   **嚴重性:** Low (低) / Info (資訊)
 *   **狀態:** Open (Needs Observation - 待觀察)
 *   **分析:** 通常與數位錶冠的交互有關，可能是 `Picker` 或 `ScrollView` 使用不當導致，也可能是模擬器偽影。
-*   **解決方案/後續:** 觀察修改 `SettingsView` 中的 Picker 為 `Stepper` 後此警告是否消失。如果持續存在，再檢查相關視圖的 `.focusable()` 或數位錶冠修飾符。 
+*   **解決方案/後續:** 觀察修改 `SettingsView` 中的 Picker 為 `Stepper` 後此警告是否消失。如果持續存在，再檢查相關視圖的 `.focusable()` 或數位錶冠修飾符。
+
+### 14. 重複定義 `CustomStringConvertible` 擴展錯誤
+
+*   **問題描述:** 在將 `UNAuthorizationStatus` 和 `HKAuthorizationStatus` 的 `CustomStringConvertible` 擴展從 `WelcomeView.swift` 移至 `PowerNapViewModel.swift` 後，未刪除 `WelcomeView.swift` 中的原始版本，導致編譯錯誤 `invalid redeclaration of 'description'` 和 `redundant conformance` (Build log 2025-04-26T17-22-53)。
+*   **發現時間:** 2025-04-26
+*   **嚴重性:** High (阻礙編譯)
+*   **狀態:** Resolved (已解決)
+*   **分析:** 同一個擴展在專案中的多個檔案內被定義。
+*   **解決方案:** 已從 `WelcomeView.swift` 中刪除重複的擴展定義。 

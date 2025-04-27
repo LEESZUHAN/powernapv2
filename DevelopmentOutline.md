@@ -8,7 +8,7 @@
 
 1.  **遵循最佳實踐：** 嚴格遵循《PowerNapXcodeDebugGuide.md》中總結的最佳實踐，特別是在：
     *   **共享類型管理：** 確保如 `AgeGroup` 等共享類型擁有單一來源檔案，並正確設定 Target Membership。
-    *   **依賴注入：** 在 ViewModel 初始化時，於 `init` 方法內部創建服務實例，避免在參數預設值中使用 Actor 隔離類型。
+    *   **依賴注入 (DI)：** 積極採用 DI 模式，將 Service 實例注入 ViewModel（例如在 `init` 中傳入），提高可測試性與降低耦合度。(註：參考 o4 mini AI 審查建議，此為高優先級實踐)
     *   **架構清晰：** 維持 ViewModel 管理 Services 的單向依賴關係。
 2.  **階段化推進：** 按照本文件定義的階段順序開發，先建立基礎架構和核心服務，再逐步實現複雜功能和 UI。
 3.  **優先權限與引導：** 首先完成第一階段的權限管理與引導流程，這是 App 的基礎門檻，也是相對獨立的模塊。
@@ -25,6 +25,7 @@
     *   設置基本 SwiftUI UI 框架 (`ContentView`, `PowerNapApp`)。
     *   定義基礎資料模型 (如 `NapState`, `SleepState` 等)。
     *   **建立共享類型單一來源：** 創建 `SharedModels` 或類似資料夾，定義 `AgeGroup.swift`（參考 `PowerNapXcodeDebugGuide.md` 的範例），確保其 Target Membership 正確。
+    *   引入 SwiftLint 並配置規則，確保代碼風格一致性。(註：參考 o4 mini AI 審查建議)
 
 2.  **核心服務層實現 (基礎)**
     *   **`HealthKitService`:**
@@ -39,6 +40,7 @@
     *   **`NotificationService`:**
         *   實現 UNUserNotificationCenter 基礎設定。
         *   實現請求通知權限的邏輯。
+    *   **錯誤處理：** 為各 Service 定義清晰的 Error 型別，方便統一處理錯誤。(註：參考 o4 mini AI 審查建議)
     *   **`PermissionManager` (或整合至各服務/ViewModel):**
         *   設計用於統一管理和檢查 HealthKit、通知等權限狀態的機制。
         *   提供檢查權限狀態的接口。
@@ -61,9 +63,10 @@
 
 4.  **基礎 ViewModel**
     *   **`PowerNapViewModel` (或其他主 ViewModel):**
-        *   初始化核心服務（遵循 `PowerNapXcodeDebugGuide.md` 的依賴注入最佳實踐）。
+        *   初始化核心服務（遵循 DI 原則）。
         *   管理權限狀態和引導流程的 UI 邏輯。
         *   建立 Combine 綁定以接收服務發布的基礎數據（如權限狀態）。
+        *   ViewModel 應包含管理 `isLoading` 和 `error` 狀態的 `@Published` 屬性，供 UI 綁定。(註：參考 o4 mini AI 審查建議)
 
 ## 第二階段：核心睡眠監測演算法
 
@@ -71,7 +74,7 @@
     *   **`HealthKitService`:** 穩定獲取和發布 (Publish) 即時心率和緩存的靜息心率。
     *   **`MotionService`:** 處理加速度數據，判斷用戶是否處於靜止狀態，計算動作級別，並發布相關狀態 (`isStill`, `motionLevel`)。
     *   **`SleepDetectionService`:**
-        *   持有 `HealthKitService` 和 `MotionService` 的實例。
+        *   持有 `HealthKitService` 和 `MotionService` 的實例 (通過 DI 注入)。
         *   訂閱心率和動作數據。
 
 2.  **睡眠偵測邏輯 (`SleepDetectionService`)**
@@ -81,6 +84,7 @@
     *   實現入睡偵測狀態機 (`SleepState`: awake, potentialSleep, asleep, disturbed)。
     *   發布 (`@Published`) 當前的 `SleepState` 和偵測到的 `sleepStartTime`。
     *   處理特殊情況（如 RHR 極低，參考指南）。
+    *   **單元測試：** 為核心睡眠偵測邏輯撰寫單元測試，驗證不同條件下的狀態轉換。(註：參考 o4 mini AI 審查建議)
 
 3.  **個人化心率模型 (策略)**
     *   **數據記錄 (`HealthKitService`)：** 確立在 `SleepDetectionService` 判定用戶進入 `.asleep` 狀態後，調用 `HealthKitService` 記錄一個對應時間段的 `HKCategorySample`（標記為午睡）到 HealthKit 的機制。**此階段僅確立機制，不實現模型學習。**
@@ -90,7 +94,7 @@
 
 4. **ViewModel 整合**
     *   **`PowerNapViewModel`:**
-        *   初始化 `SleepDetectionService` 和 `PersonalizedHRModelService`。
+        *   初始化 `SleepDetectionService` 和 `PersonalizedHRModelService` (通過 DI 注入)。
         *   訂閱 `SleepDetectionService` 發布的 `SleepState` 和 `sleepStartTime`。
         *   訂閱 `HealthKitService` 和 `MotionService` 發布的心率、動作數據，用於 UI 展示。
 
@@ -220,49 +224,49 @@
 ## 開發進度追蹤 (新專案)
 
 ### 第一階段
-- [ ] 專案基礎設置 (新專案建立、基本 SwiftUI 框架)
-- [ ] 基礎資料模型定義 (`NapState`, `SleepState`, `AgeGroup` 等共享類型)
-- [ ] 核心服務層實現 (HealthKit, Motion, Notification 基礎框架和權限請求)
+- [x] 專案基礎設置 (新專案建立、基本 SwiftUI 框架)
+- [x] 基礎資料模型定義 (`NapState`, `SleepState`, `AgeGroup` 等共享類型)
+- [x] 核心服務層實現 (HealthKit, Motion, Notification 基礎框架和權限請求)
 - [ ] `PermissionManager` 或等效機制實現
-- [ ] 權限管理與引導流程 UI (`WelcomeView`, 狀態顯示, 跳轉設定)
-- [ ] 首次啟動權限檢查邏輯
-- [ ] 基礎 `PowerNapViewModel` (服務初始化, 權限管理邏輯)
+- [x] 權限管理與引導流程 UI (`WelcomeView`, 狀態顯示, 跳轉設定)
+- [x] 首次啟動權限檢查邏輯
+- [x] 基礎 `PowerNapViewModel` (服務初始化, 權限管理邏輯)
 
 ### 第二階段
-- [ ] `HealthKitService` 穩定獲取與發布 HR/RHR
-- [ ] `MotionService` 穩定獲取與發布靜止/動作狀態
-- [ ] `SleepDetectionService` 框架與數據訂閱
-- [ ] 動態心率閾值計算邏輯 (基於 AgeGroup 和 RHR)
-- [ ] 睡眠偵測狀態機與核心邏輯 (`SleepState` 判定)
+- [x] `HealthKitService` 穩定獲取與發布 HR/RHR
+- [x] `MotionService` 穩定獲取與發布靜止/動作狀態
+- [x] `SleepDetectionService` 框架與數據訂閱
+- [x] 動態心率閾值計算邏輯 (基於 AgeGroup 和 RHR)
+- [x] 睡眠偵測狀態機與核心邏輯 (`SleepState` 判定)
 - [ ] 特殊情況處理 (低 RHR)
 - [ ] `HealthKitService` 實現記錄午睡樣本的接口
-- [ ] `PersonalizedHRModelService` 服務框架建立
-- [ ] `PowerNapViewModel` 整合睡眠偵測狀態和數據展示
+- [x] `PersonalizedHRModelService` 服務框架建立
+- [x] `PowerNapViewModel` 整合睡眠偵測狀態和數據展示
 
 ### 第三階段
-- [ ] 計時選項 UI (滾輪等)
-- [ ] `UserDefaults` 存儲用戶設定 (時長, 震動, 聲音)
-- [ ] `PowerNapViewModel` 倒數計時邏輯 (`Timer`)
-- [ ] 計時器自動啟動邏輯 (基於 `SleepState`)
-- [ ] 計時器手動啟動邏輯 (如果實現睡眠偵測禁用選項)
-- [ ] `NotificationService` 發送本地通知
+- [x] 計時選項 UI (滾輪等)
+- [x] `UserDefaults` 存儲用戶設定 (時長, 震動, 聲音)
+- [x] `PowerNapViewModel` 倒數計時邏輯 (`Timer`)
+- [x] 計時器自動啟動邏輯 (基於 `SleepState`)
+- [x] 計時器手動啟動邏輯 (如果實現睡眠偵測禁用選項)
+- [x] `NotificationService` 發送本地通知
 - [ ] 可配置震動強度實現
 - [ ] 可選喚醒聲音實現
 - [ ] 時間敏感通知設定
-- [ ] `ExtendedRuntimeManager` 實現與整合
+- [x] `ExtendedRuntimeManager` 實現與整合
 
 ### 第四階段
 - [ ] 主介面 `PowerNapView` 完整 UI 與狀態顯示
-- [ ] 核心數據展示完善 (HR, RHR, Motion, SleepState)
-- [ ] 計時器 UI (剩餘時間, 進度條)
-- [ ] 控制按鈕邏輯 (Start, Pause, Resume, Stop)
-- [ ] 設定界面 `SettingsView` 佈局
-- [ ] 設定項實現 (時長, 震動, 聲音, 可選的睡眠偵測開關)
-- [ ] 年齡組自動獲取與手動選擇/覆蓋邏輯及 UI
+- [x] 核心數據展示完善 (HR, RHR, Motion, SleepState)
+- [x] 計時器 UI (剩餘時間, 進度條)
+- [x] 控制按鈕邏輯 (Start, Pause, Resume, Stop)
+- [x] 設定界面 `SettingsView` 佈局
+- [x] 設定項實現 (時長, 震動, 聲音, 可選的睡眠偵測開關)
+- [x] 年齡組自動獲取與手動選擇/覆蓋邏輯及 UI
 - [ ] `PersonalizedHRModelService` 模型學習與閾值計算邏輯實現
 - [ ] `SleepDetectionService` 集成並應用個人化閾值
 - [ ] 交互與體驗優化 (流程反饋, 錯誤處理)
-- [ ] App Icon 設計與基本配色
+- [x] App Icon 設計與基本配色
 
 ### 第五階段
 - [ ] 個人化閾值微調界面 UI 與邏輯

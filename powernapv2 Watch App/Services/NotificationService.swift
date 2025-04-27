@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 import Combine
+import WatchKit // For WKHapticType
 
 class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     
@@ -19,11 +20,10 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     
     // --- 權限管理 ---
     func requestAuthorization(completion: @escaping (Bool, Error?) -> Void) {
-        let options: UNAuthorizationOptions = [.alert, .sound, .badge, .criticalAlert] // 包含聲音和震動，以及關鍵提醒
-        notificationCenter.requestAuthorization(options: options) { [weak self] granted, error in
+        notificationCenter.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
+            print("通知權限請求完成，結果: \(granted)")
             DispatchQueue.main.async {
-                self?.checkAuthorizationStatus() // 請求後更新狀態
-                print("通知權限請求完成，結果：\(granted)")
+                self?.checkAuthorizationStatus()
                 completion(granted, error)
             }
         }
@@ -40,41 +40,47 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     
     // --- 發送通知 (第三階段實現) ---
     // 移除舊參數，改為立即觸發（帶微小延遲）
-    func scheduleWakeUpNotification(in timeInterval: TimeInterval = 0.1) {
-        print("NotificationService: 準備安排喚醒通知...")
+    func scheduleWakeUpNotification(soundEnabled: Bool, hapticEnabled: Bool) {
+        // 1. Cancel any pending wake-up notifications first
+        cancelPendingNotifications()
         
+        // 2. Create content
         let content = UNMutableNotificationContent()
-        content.title = "小睡時間到！"
-        content.body = "起床囉！祝你精神飽滿！"
-        content.sound = .default // 使用預設提示音
-        // 設置為時間敏感通知，以覆蓋勿擾模式等
-        content.interruptionLevel = .timeSensitive 
-        content.categoryIdentifier = "WAKE_UP_CATEGORY" // 可選：用於自定義操作
-
-        // 使用微小延遲觸發
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(timeInterval, 0.1), repeats: false)
+        content.title = "PowerNap 完成"
+        content.body = "是時候醒來了！"
+        // Set sound based on user preference
+        content.sound = soundEnabled ? UNNotificationSound.defaultCritical : nil // Use critical for wake-up?
+        // Mark as time-sensitive (iOS 15+ / watchOS 8+)
+        content.interruptionLevel = .timeSensitive
         
-        let requestIdentifier = "wakeUpNotification"
+        // 3. Create trigger (immediate)
+        // Wake-up happens right after timer finishes, so trigger immediately
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false) // Trigger almost instantly
+        
+        // 4. Create request
+        let requestIdentifier = "PowerNapWakeUp"
         let request = UNNotificationRequest(identifier: requestIdentifier, content: content, trigger: trigger)
-
+        
+        // 5. Schedule the request
         notificationCenter.add(request) { error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("安排喚醒通知失敗: \(error.localizedDescription)")
-                } else {
-                    print("喚醒通知已成功安排 (ID: \(requestIdentifier))，將在 \(trigger.timeInterval) 秒後觸發。")
+            if let error = error {
+                print("排程喚醒通知失敗: \(error.localizedDescription)")
+            } else {
+                print("成功排程喚醒通知 (Sound: \(soundEnabled), Haptic: \(hapticEnabled))")
+                // Trigger haptic feedback if enabled
+                if hapticEnabled {
+                    // Consider different haptic types based on intensity setting in the future
+                    WKInterfaceDevice.current().play(.success) // Example haptic
                 }
             }
         }
     }
     
     func cancelPendingNotifications() {
-        print("NotificationService: 取消所有待處理通知...")
-        notificationCenter.getPendingNotificationRequests { requests in
-            print("待處理通知數量: \(requests.count)")
-        }
-        notificationCenter.removeAllPendingNotificationRequests()
-        print("已發送取消請求。")
+        let identifier = "PowerNapWakeUp"
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: [identifier])
+        notificationCenter.removeDeliveredNotifications(withIdentifiers: [identifier])
+        print("已取消待處理的喚醒通知 (ID: \(identifier))")
     }
     
     // --- UNUserNotificationCenterDelegate 方法 (可選實現) ---

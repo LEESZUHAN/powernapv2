@@ -6,7 +6,7 @@
 	<array/>
 	<key>WKBackgroundModes</key>
 	<array>
-		<string>mindfulness</string>
+		<string>workout-processing</string>
 	</array>
 </dict>
 </plist>

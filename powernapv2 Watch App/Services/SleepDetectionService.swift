@@ -1,7 +1,7 @@
 import Foundation
 import Combine
-import HealthKit // For HK Objects if needed later
-import CoreMotion // Add this import
+import HealthKit // Add import for HK Objects
+import CoreMotion // Add import for Motion detection
 
 // MARK: - Sleep State Enum
 // enum SleepState: Equatable {
@@ -21,7 +21,7 @@ class SleepDetectionService: ObservableObject {
     private let healthKitService: HealthKitService
     private let motionService: MotionService
     private var currentAgeGroup: AgeGroup // <-- Add property to hold age group
-    // TODO: Potentially add PersonalizedHRModelService in later phases
+    private var currentAdjustmentOffset: Double // New property for adjustment
 
     // MARK: - Published Properties
     @Published var currentSleepState: SleepState = .awake
@@ -40,11 +40,12 @@ class SleepDetectionService: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
-    init(healthKitService: HealthKitService, motionService: MotionService, initialAgeGroup: AgeGroup) {
+    init(healthKitService: HealthKitService, motionService: MotionService, initialAgeGroup: AgeGroup, initialAdjustmentOffset: Double) {
         self.healthKitService = healthKitService
         self.motionService = motionService
         self.currentAgeGroup = initialAgeGroup // Set initial age group
-        print("SleepDetectionService 初始化完成，初始年齡組: \(initialAgeGroup)")
+        self.currentAdjustmentOffset = initialAdjustmentOffset // Set initial offset
+        print("SleepDetectionService 初始化完成，初始年齡組: \(initialAgeGroup), 初始調整: \(initialAdjustmentOffset)")
         setupBindings()
     }
 
@@ -107,8 +108,8 @@ class SleepDetectionService: ObservableObject {
             return
         }
 
-        // Calculate the dynamic heart rate threshold using currentAgeGroup
-        let hrThreshold = calculateHeartRateThreshold(rhr: currentRHR)
+        // Use the current age group and adjustment offset
+        let hrThreshold = calculateHeartRateThreshold(rhr: currentRHR, adjustmentOffset: currentAdjustmentOffset)
         let requiredDuration = currentAgeGroup.minDurationForSleepDetection // Get duration from age group
 
         // print("SleepDetectionService: Evaluating - AgeGroup: \(currentAgeGroup) HR: \(currentHR), RHR: \(currentRHR), Threshold: \(hrThreshold), Still: \(isCurrentlyStill), Required Duration: \(requiredDuration)s, State: \(currentSleepState)")
@@ -122,7 +123,7 @@ class SleepDetectionService: ObservableObject {
             if conditionsMet {
                 // Conditions are met, start or continue the low HR timer
                 if lowHRStartTime == nil {
-                    print("SleepDetectionService: Conditions met (Low HR + Still). Starting Low HR timer.")
+                    print("SleepDetectionService: Conditions met. Starting timer.")
                     lowHRStartTime = Date()
                     // Transition to detecting only if currently awake or disturbed
                     if currentSleepState == .awake || currentSleepState == .disturbed {
@@ -131,7 +132,7 @@ class SleepDetectionService: ObservableObject {
                 } else {
                     // Low HR timer is running, check if duration is met using requiredDuration
                     if let startTime = lowHRStartTime, Date().timeIntervalSince(startTime) >= requiredDuration {
-                        print("SleepDetectionService: 低心率持續時間 (\\(requiredDuration)s) 已滿足且保持靜止。轉換狀態為 Asleep。")
+                        print("SleepDetectionService: Duration met. State -> Asleep.")
                         currentSleepState = .asleep
                         lowHRStartTime = nil // Reset timer after transition
                     } else {
@@ -142,11 +143,11 @@ class SleepDetectionService: ObservableObject {
                 // Conditions are NOT met (HR high or user moved)
                 if lowHRStartTime != nil {
                     // If the timer was running, conditions just failed
-                     print("SleepDetectionService: Conditions no longer met (HR High or Moved). Resetting timer.")
-                     resetTimersAndState(to: .awake, reason: "HR High or Moved while Awake/Detecting")
+                     print("SleepDetectionService: Conditions no longer met. Resetting timer.")
+                     resetTimersAndState(to: .awake, reason: "HR High or Moved")
                  } else if currentSleepState == .detecting {
                      // If it was detecting but conditions failed before timer started (e.g. immediate move), go back to awake
-                     print("SleepDetectionService: Conditions failed while detecting (before timer start?). Moving to Awake.")
+                     print("SleepDetectionService: Conditions failed while detecting. Moving to Awake.")
                      currentSleepState = .awake
                  } else {
                     // Already awake or disturbed, and conditions still not met, no state change needed
@@ -156,7 +157,7 @@ class SleepDetectionService: ObservableObject {
         case .asleep:
             // If conditions are no longer met (HR high or user moved)
             if !conditionsMet {
-                print("SleepDetectionService: Conditions no longer met while Asleep (HR High or Moved). Transitioning to Awake.")
+                print("SleepDetectionService: Conditions no longer met while Asleep. State -> Awake.")
                 resetTimersAndState(to: .awake, reason: "HR High or Moved while Asleep")
             }
             // Otherwise, remain asleep
@@ -167,22 +168,29 @@ class SleepDetectionService: ObservableObject {
         }
     }
 
-    private func calculateHeartRateThreshold(rhr: Double) -> Double {
-        // Use the computed property from the current AgeGroup
-        let thresholdPercentage = currentAgeGroup.heartRateThresholdPercentage
+    // MARK: - Heart Rate Threshold Calculation
+
+    // Made internal to be called from ViewModel for debug display
+    /*private*/ func calculateHeartRateThreshold(rhr: Double, adjustmentOffset: Double) -> Double {
+        // Calculate base threshold percentage from age group
+        let baseThresholdPercentage = currentAgeGroup.heartRateThresholdPercentage
+        // Apply the adjustment offset
+        let adjustedThresholdPercentage = baseThresholdPercentage + adjustmentOffset
+        // Clamp the adjusted percentage to a reasonable range (e.g., 75% to 98%)
+        let clampedPercentage = max(0.75, min(0.98, adjustedThresholdPercentage))
         
-        // Special handling for low RHR (athletes)
-        if rhr < 40 {
-             print("SleepDetectionService: 低 RHR 偵測到 (\(rhr)). 檢查是否需要運動員調整 (目前僅使用百分比 \(thresholdPercentage))")
-             // Future enhancement: Implement the ΔHR logic from guideline as an alternative threshold
-             // For now, we stick to the percentage defined in AgeGroup
-        }
-        return rhr * thresholdPercentage
+        let calculatedThreshold = rhr * clampedPercentage
+        
+        let absoluteMinimumThreshold: Double = 40.0 
+        let finalThreshold = max(calculatedThreshold, absoluteMinimumThreshold)
+        
+        print("SleepDetectionService: RHR=\(rhr), Age=\(currentAgeGroup), Base%=\(baseThresholdPercentage), Adj%=\(adjustedThresholdPercentage), Clamp%=\(clampedPercentage), CalcThr=\(calculatedThreshold), FinalThr=\(finalThreshold)")
+        return finalThreshold
     }
     
     // Renamed back from resetSleepDetectionState - Now also handles state transition
     private func resetTimersAndState(to newState: SleepState, reason: String) { 
-        print("SleepDetectionService: Resetting timers and state to \(newState). Reason: \(reason)")
+        print("SleepDetectionService: Resetting state to \(newState). Reason: \(reason)")
         lowHRStartTime = nil
         // self.heartRateData = [] // Reset buffer if used
         
@@ -194,16 +202,13 @@ class SleepDetectionService: ObservableObject {
 
     // MARK: - Public Control (Optional)
     func startDetection() {
-        print("SleepDetectionService: 開始睡眠偵測... 使用年齡組: \(currentAgeGroup)")
-        // Reset state? Ensure services are running?
-        // The bindings should automatically handle data flow if services are running.
-        // We might need to explicitly set the state to .detecting here.
+        print("SleepDetectionService: 開始偵測... Age: \(currentAgeGroup), Adj: \(currentAdjustmentOffset)")
         currentSleepState = .detecting
         resetTimersAndState(to: .detecting, reason: "Manual start")
     }
 
     func stopDetection() {
-         print("SleepDetectionService: 停止睡眠偵測...")
+         print("SleepDetectionService: 停止偵測...")
          // Reset state? Stop timers?
          resetTimersAndState(to: .awake, reason: "Manual stop")
          currentSleepState = .awake // Or idle?
@@ -214,9 +219,14 @@ class SleepDetectionService: ObservableObject {
     func updateAgeGroup(_ newGroup: AgeGroup) {
         print("SleepDetectionService: 年齡組更新為 \(newGroup)")
         self.currentAgeGroup = newGroup
-        // Re-evaluate sleep state immediately if age group changes?
-        // Or just let the next HR/Motion update handle it.
-        // For simplicity, let the next evaluation use the new group.
+        // No immediate re-evaluation needed, next cycle will use the new group
+    }
+
+    // New method to update the adjustment offset
+    func updateAdjustmentOffset(_ newOffset: Double) {
+        print("SleepDetectionService: 調整偏移更新為 \(newOffset)")
+        self.currentAdjustmentOffset = newOffset
+        // No immediate re-evaluation needed, next cycle will use the new offset
     }
 
 } 

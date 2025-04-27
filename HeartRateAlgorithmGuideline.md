@@ -354,3 +354,15 @@ func calculateOptimizedThreshold(profile: UserSleepProfile, sleepData: [SleepSes
    - 如果提供用戶反饋機制，可根據用戶確認的睡眠檢測準確性進一步調整模型
    - 對於反饋「誤檢測」的情況，適當提高閾值
    - 對於反饋「未檢測到」的情況，適當降低閾值
+
+## 手動閾值調整 (使用者設定)
+
+為了讓使用者能根據個人體驗微調偵測敏感度，App 提供了一個手動調整閾值的功能。
+
+- **機制:** 使用者可以透過 `SettingsAgeThresholdView` 中的滑桿進行調整，範圍通常為 -5% 到 +5% (對應程式碼中的 `-0.05` 到 `+0.05` 偏移量)。
+- **演算法影響:** 這個調整值 (`adjustmentOffset`) 會直接加到基於年齡組的 `baseThresholdPercentage` 上，得到最終用於計算心率門檻的 `adjustedThresholdPercentage`。
+  `adjustedThresholdPercentage = baseThresholdPercentage + adjustmentOffset`
+- **效果解釋 (重要！):**
+    - **正向調整 (+%, 向右滑, UI 標示「判定較寬鬆」):** 提高最終的心率百分比閾值 (例如 90% -> 95%)。這使得即時心率**更容易**低於計算出的門檻值，因此 App **更容易偵測到入睡**。適用於使用者覺得 App **偵測不到**入睡的情況。
+    - **負向調整 (-%, 向左滑, UI 標示「判定較嚴格」):** 降低最終的心率百分比閾值 (例如 90% -> 85%)。這使得即時心率**更難**低於計算出的門檻值 (需要下降更多)，因此 App **更難偵測到入睡**。適用於使用者覺得 App **容易誤判**入睡的情況。
+- **儲存:** 該調整值 (`thresholdAdjustmentPercentageOffset`) 儲存在 `UserDefaults` 中。

@@ -6,7 +6,5 @@
 	<true/>
 	<key>com.apple.developer.healthkit.background-delivery</key>
 	<true/>
-	<key>com.apple.developer.extended-run-session.mindfulness</key>
-	<true/>
 </dict>
 </plist>
